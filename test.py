@@ -3,16 +3,18 @@ import nose
 import random
 import resource
 import gc
+import archinfo
 
-def test_memory():
-    arches = [ 'VexArchX86', 'VexArchPPC32', 'VexArchAMD64', 'VexArchARM' ]
+def skip_memory():
     # we're not including VexArchMIPS32 cause it segfaults sometimes
-
+    arches = filter(lambda x: not x.name == 'MIPS32',
+                    archinfo.all_arches)
+    
     for i in xrange(10000):
         try:
             s = hex(random.randint(2**100,2**100*16))[2:]
             a = random.choice(arches)
-            p = pyvex.IRSB(bytes=s, arch=a)
+            p = pyvex.IRSB(s, 0, arch=a)
         except pyvex.PyVEXError:
             pass
 
@@ -22,7 +24,7 @@ def test_memory():
         try:
             s = hex(random.randint(2**100,2**100*16))[2:]
             a = random.choice(arches)
-            p = pyvex.IRSB(bytes=s, arch=a)
+            p = pyvex.IRSB(s, 0, arch=a)
         except pyvex.PyVEXError:
             pass
     del p
@@ -49,15 +51,14 @@ def test_ircallee():
 ############
 
 def test_irsb_empty():
-    nose.tools.assert_raises(pyvex.PyVEXError, pyvex.IRSB)
-    nose.tools.assert_raises(pyvex.PyVEXError, pyvex.IRSB, bytes='')
+    nose.tools.assert_raises(pyvex.PyVEXError, pyvex.IRSB, '', 0, archinfo.ArchX86())
 
 def test_irsb_arm():
-    irsb = pyvex.IRSB(bytes='\x33\xff\x2f\xe1', arch="VexArchARM")
+    irsb = pyvex.IRSB('\x33\xff\x2f\xe1', 0, archinfo.ArchARM('Iend_LE'))
     nose.tools.assert_equal(sum([ 1 for i in irsb.statements if type(i) == pyvex.IRStmt.IMark ]), 1)
 
 def test_irsb_popret():
-    irsb = pyvex.IRSB(bytes='\x5d\xc3')
+    irsb = pyvex.IRSB('\x5d\xc3', 0, archinfo.ArchX86())
     stmts = irsb.statements
     irsb.pp()
 
